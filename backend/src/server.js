@@ -22,7 +22,9 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+    const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
+
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app') || isLocalhost) {
       callback(null, true);
     } else {
       console.warn(`CORS blocked for origin: ${origin}`);
@@ -61,15 +63,23 @@ import { initializeDatabase, getInitStatus, getInitPromise } from './config/db.j
 
 // Middleware to ensure database is ready before handling requests
 app.use(async (req, res, next) => {
-  // Always allow health check to proceed immediately
-  if (req.path === '/api/health') return next();
+  // Always allow health check and static files to proceed
+  if (req.path === '/api/health' || req.path.includes('.')) return next();
 
   try {
     const promise = getInitPromise();
-    if (promise) await promise;
+    if (promise) {
+      // Wait for initialization but with a timeout to avoid hanging the app
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Initialization timeout')), 15000)
+      );
+      await Promise.race([promise, timeoutPromise]);
+    }
     next();
   } catch (err) {
-    res.status(503).json({ message: 'Database initialization in progress or failed', retryAfter: 10 });
+    console.error('Initialization Middleware Error:', err.message);
+    // Continue anyway to let the routes handle the DB error (better UX than 503)
+    next();
   }
 })
 
