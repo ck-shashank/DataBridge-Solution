@@ -16,6 +16,7 @@ import { fileURLToPath } from 'url'
 const isProduction = process.env.NODE_ENV === 'production' || process.env.DATABASE_URL?.includes('neon.tech')
 let initStatus = 'pending'
 let initError = null
+let initPromise = null
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -35,52 +36,60 @@ const pool = new Pool({
  * Includes retry logic and wake-up ping to handle Neon "Compute is transitioning" state.
  */
 export const initializeDatabase = async (retries = 6, delay = 10000) => {
-    try {
-        const __dirname = path.dirname(fileURLToPath(import.meta.url));
-        const sqlPath = path.resolve(__dirname, '../../database.sql');
-        
-        if (!fs.existsSync(sqlPath)) {
-            console.warn(`⚠️ database.sql not found at ${sqlPath}`);
-            initStatus = 'file_not_found';
-            return;
-        }
+    initPromise = (async () => {
+        try {
+            const __dirname = path.dirname(fileURLToPath(import.meta.url));
+            const sqlPath = path.resolve(__dirname, '../../database.sql');
+            
+            if (!fs.existsSync(sqlPath)) {
+                console.warn(`⚠️ database.sql not found at ${sqlPath}`);
+                initStatus = 'file_not_found';
+                return;
+            }
 
-        const sql = fs.readFileSync(sqlPath, 'utf8')
+            const sql = fs.readFileSync(sqlPath, 'utf8')
 
-        // Step 1: Wake-up Ping
-        for (let i = 0; i < retries; i++) {
-            try {
-                console.log(`Wake-up Ping (Attempt ${i + 1}/${retries})...`);
-                await pool.query('SELECT 1');
-                console.log('✓ Database is awake');
-                break;
-            } catch (err) {
-                const isRecoverable = err.message.includes('transitioning') || 
-                                     err.message.includes('not ready') || 
-                                     err.message.includes('timeout') ||
-                                     err.message.includes('terminated');
+            // Step 1: Wake-up Ping
+            for (let i = 0; i < retries; i++) {
+                try {
+                    console.log(`Wake-up Ping (Attempt ${i + 1}/${retries})...`);
+                    await pool.query('SELECT 1');
+                    console.log('✓ Database is awake');
+                    break;
+                } catch (err) {
+                    const isRecoverable = err.message.includes('transitioning') || 
+                                         err.message.includes('not ready') || 
+                                         err.message.includes('timeout') ||
+                                         err.message.includes('terminated');
 
-                if (isRecoverable && i < retries - 1) {
-                    console.log(`⏳ Waiting for Neon to wake up (${err.message})... retrying in ${delay / 1000}s`);
-                    await new Promise(res => setTimeout(res, delay));
-                } else {
-                    throw err; // Give up and move to catch block
+                    if (isRecoverable && i < retries - 1) {
+                        console.log(`⏳ Waiting for Neon to wake up (${err.message})... retrying in ${delay / 1000}s`);
+                        await new Promise(res => setTimeout(res, delay));
+                    } else {
+                        throw err; // Give up and move to catch block
+                    }
                 }
             }
-        }
 
-        // Step 2: Run Initialization
-        console.log('Running initialization script...');
-        await pool.query(sql);
-        console.log('✓ Database schema initialized successfully');
-        initStatus = 'success';
-        
-    } catch (e) {
-        initStatus = 'error';
-        initError = e.message;
-        console.error('❌ Database initialization failed:', e.message);
-    }
+            // Step 2: Run Initialization
+            console.log('Running initialization script...');
+            await pool.query(sql);
+            console.log('✓ Database schema initialized successfully');
+            initStatus = 'success';
+            
+        } catch (e) {
+            initStatus = 'error';
+            initError = e.message;
+            console.error('❌ Database initialization failed:', e.message);
+        }
+    })();
+    return initPromise;
 }
+
+/**
+ * Get the initialization promise
+ */
+export const getInitPromise = () => initPromise;
 
 /**
  * Get initialization status for health check

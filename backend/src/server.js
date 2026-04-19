@@ -57,7 +57,21 @@ import jobsRoutes from './routes/jobs.routes.js'
 import applicationsRoutes from './routes/applications.routes.js'
 import contactRoutes from './routes/contact.routes.js'
 import authRoutes, { adminRouter } from './routes/auth.routes.js'
-import { initializeDatabase, getInitStatus } from './config/db.js'
+import { initializeDatabase, getInitStatus, getInitPromise } from './config/db.js'
+
+// Middleware to ensure database is ready before handling requests
+app.use(async (req, res, next) => {
+  // Always allow health check to proceed immediately
+  if (req.path === '/api/health') return next();
+
+  try {
+    const promise = getInitPromise();
+    if (promise) await promise;
+    next();
+  } catch (err) {
+    res.status(503).json({ message: 'Database initialization in progress or failed', retryAfter: 10 });
+  }
+})
 
 app.use('/api/jobs', jobsRoutes)
 app.use('/api/applications', applicationsRoutes)
