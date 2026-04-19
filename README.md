@@ -1,173 +1,73 @@
-# DataBridge Solutions - Full-Stack Web Application
+# DataBridge Solutions - Full-Stack Application
 
-A professional, production-ready web application with React frontend and Node.js/Express backend with PostgreSQL database.
+A professional, production-ready web application built with **React**, **Node.js**, **Express**, and **PostgreSQL**. This project features a stunning modern UI, comprehensive admin dashboard, and automated database orchestration.
+
+## ✨ Key Enhancements
+
+*   **Zero-Touch Database Automation**: The application automatically initializes the database schema and sample data on a fresh Neon PostgreSQL instance. It handles compute-wake-up delays (wait-retries) automatically.
+*   **Production Optimized**: Fully configured for Vercel deployment with automated CORS handling for both production and localhost (any port).
+*   **Modern Glassmorphism Design**: High-end UI with theme persistence, Framer Motion animations, and responsive layouts.
+*   **Admin Dashboard**: Secure JWT-based admin panel for managing job listings, applications, and contact queries.
 
 ## 🏗️ Project Structure
 
-```
-DatabridgeSolutions Final/
+```text
+databridge-solutions/
 ├── frontend/                 # React + Vite + Tailwind CSS
 │   ├── src/
-│   │   ├── components/       # Reusable components
-│   │   ├── pages/           # Page components
-│   │   ├── api/             # API service layer
-│   │   ├── context/         # React context (theme)
-│   │   ├── App.jsx
-│   │   ├── main.jsx
-│   │   └── index.css
-│   ├── package.json
-│   ├── vite.config.js
-│   └── tailwind.config.js
+│   │   ├── api/             # API service layer with auto-base-URL
+│   │   ├── components/      # UI Components (Modals, Hero, Chat)
+│   │   ├── pages/           # Page components (Admin, Careers, etc.)
+│   │   └── context/         # Global state (Theme)
+│   └── vercel.json          # Deployment config for Vite
 │
 └── backend/                  # Node.js + Express + PostgreSQL
     ├── src/
-    │   ├── config/          # Database config
-    │   ├── controllers/     # Route controllers
-    │   ├── routes/          # API routes
-    │   ├── middleware/      # Auth middleware
-    │   └── server.js
-    ├── database.sql         # PostgreSQL schema
-    ├── .env
-    └── package.json
+    │   ├── config/          # DB config with Auto-Init Logic
+    │   ├── routes/          # API route definitions
+    │   └── server.js        # Server entry with Sync-Middleware
+    ├── database.sql         # SQL Schema & Sample Data
+    └── vercel.json          # Serverless architecture config
 ```
 
 ## 🚀 Quick Start
 
-### Prerequisites
-
+### 1. Prerequisites
 - Node.js v18+ 
-- PostgreSQL 14+
-- npm or yarn
-
-### 1. Database Setup
-
-1. Create a PostgreSQL database:
-```sql
-CREATE DATABASE databridge;
-```
-
-2. Run the schema file:
-```bash
-cd backend
-psql -U postgres -d databridge -f database.sql
-```
-
-Or connect to your database and run the SQL manually.
+- Neon PostgreSQL (or local Postgres)
+- npm
 
 ### 2. Backend Setup
-
 ```bash
 cd backend
-
-# Install dependencies
 npm install
-
-# Configure environment variables
-# Edit .env file with your database credentials:
-# DB_HOST=localhost
-# DB_PORT=5432
-# DB_NAME=databridge
-# DB_USER=postgres
-# DB_PASSWORD=your_password
-# JWT_SECRET=your_secret_key
-# PORT=3001
-
-# Start development server
+# Copy .env.example to .env and add your DATABASE_URL
 npm run dev
 ```
-
-Backend runs on: http://localhost:3001
+*The backend will automatically create tables and sample jobs on your first run!*
 
 ### 3. Frontend Setup
-
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start development server
+# Ensure .env has VITE_API_URL=http://localhost:3001/api
 npm run dev
 ```
 
-Frontend runs on: http://localhost:5173
+## 🔌 API Endpoints (Core)
 
-## 🔐 Admin Login
-
-Default admin credentials (created by database.sql):
-- **Username:** admin
-- **Password:** admin123
-
-⚠️ **IMPORTANT:** Change the admin password in production!
-
-To create a new admin user, generate a bcrypt hash and insert:
-```sql
-INSERT INTO admin_users (username, email, password_hash) 
-VALUES ('newadmin', 'admin@example.com', '$2a$10$YOUR_HASH_HERE');
-```
-
-## 🔌 API Endpoints
-
-### Public Endpoints
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/jobs` | List all jobs |
-| GET | `/api/jobs/:id` | Get job details |
-| POST | `/api/applications` | Submit job application |
-| POST | `/api/contact` | Submit contact form |
-| POST | `/api/auth/login` | Admin login |
+| GET | `/api/health` | Check System & DB Status |
+| GET | `/api/jobs` | List all available jobs |
+| POST | `/api/auth/login` | Admin Authentication |
+| GET | `/api/admin/stats` | Dashboard statistics (Protected) |
 
-### Protected Endpoints (require JWT)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/jobs` | Create job |
-| PUT | `/api/jobs/:id` | Update job |
-| DELETE | `/api/jobs/:id` | Delete job |
-| GET | `/api/applications` | List applications |
-| PATCH | `/api/applications/:id/status` | Update status |
-| GET | `/api/contact` | List contact queries |
-| PATCH | `/api/contact/:id/status` | Update status |
-| GET | `/api/admin/stats` | Dashboard stats |
+## 🎨 Tech Stack
 
-## 🎨 Features
-
-### Frontend
-- ✅ Responsive design (mobile-first)
-- ✅ Dark/Light mode toggle
-- ✅ Framer Motion animations
-- ✅ Auto-playing hero carousel
-- ✅ Chatbot widget
-- ✅ Callback request modal
-- ✅ Admin panel with CRUD operations
-
-### Backend
-- ✅ RESTful API
-- ✅ JWT authentication
-- ✅ PostgreSQL integration
-- ✅ Input validation
-- ✅ CORS configured
-- ✅ Error handling
-
-## 📱 Pages
-
-1. **Home** - Hero carousel, services preview, stats, CTA
-2. **Services** - Detailed service cards with process section
-3. **Industries** - Grid of industries served
-4. **Careers** - Job listings from database, apply form
-5. **Contact** - Contact form with database storage
-6. **About** - Company info, team, values
-7. **Admin** - Login, dashboard, jobs CRUD, manage applications
-
-## 🛠️ Tech Stack
-
-| Frontend | Backend | Database |
-|----------|---------|----------|
-| React 18 | Node.js | PostgreSQL |
-| Vite 5 | Express 4 | pg driver |
-| Tailwind CSS 3 | JWT | bcryptjs |
-| Framer Motion | CORS | |
-| React Router 6 | dotenv | |
+- **Frontend**: React 18, Vite, Tailwind CSS, Framer Motion
+- **Backend**: Node.js, Express, PostgreSQL (`pg`)
+- **Infrastructure**: Vercel (Hosting), Neon (Database), Resend (Email)
 
 ## 📄 License
-
-MIT License - Free for personal and commercial use.
+MIT License - Free to use.
