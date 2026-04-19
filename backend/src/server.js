@@ -57,6 +57,7 @@ import jobsRoutes from './routes/jobs.routes.js'
 import applicationsRoutes from './routes/applications.routes.js'
 import contactRoutes from './routes/contact.routes.js'
 import authRoutes, { adminRouter } from './routes/auth.routes.js'
+import { initializeDatabase } from './config/db.js'
 
 app.use('/api/jobs', jobsRoutes)
 app.use('/api/applications', applicationsRoutes)
@@ -97,9 +98,20 @@ app.use((err, req, res, next) => {
 /* ======================================================
    🚀 START SERVER
 ====================================================== */
-if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
-  app.listen(PORT, () => {
-    console.log(`
+const startServer = async () => {
+  try {
+    // Attempt to initialize database before accepting traffic
+    // We don't await this if we want fast cold starts on Vercel, 
+    // but here we do to ensure the DB is ready for the first user.
+    if (process.env.NODE_ENV !== 'test') {
+      await initializeDatabase().catch(err => {
+        console.error('Failed to initialize database on startup:', err.message);
+      });
+    }
+
+    if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+      app.listen(PORT, () => {
+        console.log(`
 ========================================
  DataBridge Solutions API 🚀
 ----------------------------------------
@@ -108,7 +120,13 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
  Env    : ${process.env.NODE_ENV || 'production'}
 ========================================
 `)
-  })
+      })
+    }
+  } catch (err) {
+    console.error('CRITICAL: Server failed to start:', err);
+  }
 }
+
+startServer();
 
 export default app

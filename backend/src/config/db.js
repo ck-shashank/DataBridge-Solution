@@ -9,6 +9,9 @@ const { Pool } = pg
  * PostgreSQL Connection Pool Configuration
  * Uses environment variables for secure credential management
  */
+import fs from 'fs'
+import path from 'path'
+
 const isProduction = process.env.NODE_ENV === 'production' || process.env.DATABASE_URL?.includes('neon.tech')
 
 const pool = new Pool({
@@ -24,14 +27,54 @@ const pool = new Pool({
     ssl: isProduction ? { rejectUnauthorized: false } : false
 })
 
+/**
+ * Automatically initializes the database schema if needed.
+ * Includes retry logic to handle Neon "Compute is transitioning" state.
+ */
+export const initializeDatabase = async (retries = 5, delay = 5000) => {
+    const sqlPath = path.join(process.cwd(), 'database.sql')
+    if (!fs.existsSync(sqlPath)) {
+        console.warn('⚠️ database.sql not found, skipping initialization');
+        return;
+    }
+
+    const sql = fs.readFileSync(sqlPath, 'utf8')
+
+    for (let i = 0; i < retries; i++) {
+        try {
+            console.log(`Attempting to initialize database (Attempt ${i + 1}/${retries})...`);
+            await pool.query(sql);
+            console.log('✓ Database schema initialized successfully');
+            return;
+        } catch (err) {
+            const isTransitioning = err.message.includes('transitioning') || err.message.includes('not ready');
+            
+            if (isTransitioning && i < retries - 1) {
+                console.log(`⏳ Neon compute is waking up... retrying in ${delay / 1000}s`);
+                await new Promise(res => setTimeout(res, delay));
+            } else {
+                console.error('❌ Database initialization failed:', err.message);
+                throw err;
+            }
+        }
+    }
+}
+
 // Test database connection
 pool.on('connect', () => {
-    console.log('✓ Connected to PostgreSQL database')
+    if (process.env.NODE_ENV !== 'test') {
+        console.log('✓ Connected to PostgreSQL database')
+    }
 })
 
 pool.on('error', (err) => {
     console.error('Unexpected error on idle client', err)
-    process.exit(-1)
+    if (process.env.NODE_ENV === 'production') {
+        // In production, we don't want to crash the whole process for an idle error if possible
+        // but Vercel will handle instance restarts.
+    } else {
+        process.exit(-1)
+    }
 })
 
 /**
