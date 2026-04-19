@@ -57,7 +57,7 @@ import jobsRoutes from './routes/jobs.routes.js'
 import applicationsRoutes from './routes/applications.routes.js'
 import contactRoutes from './routes/contact.routes.js'
 import authRoutes, { adminRouter } from './routes/auth.routes.js'
-import { initializeDatabase } from './config/db.js'
+import { initializeDatabase, getInitStatus } from './config/db.js'
 
 app.use('/api/jobs', jobsRoutes)
 app.use('/api/applications', applicationsRoutes)
@@ -72,7 +72,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     environment: process.env.NODE_ENV || 'production',
-    db: 'connected (attempted)',
+    db_init: getInitStatus(),
     time: new Date().toISOString()
   })
 })
