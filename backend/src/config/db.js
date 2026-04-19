@@ -26,17 +26,16 @@ const pool = new Pool({
     password: process.env.DB_PASSWORD || '',
     max: 20,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
+    connectionTimeoutMillis: 30000, // Increase to 30s to allow Neon wake-up
     ssl: isProduction ? { rejectUnauthorized: false } : false
 })
 
 /**
  * Automatically initializes the database schema if needed.
- * Includes retry logic to handle Neon "Compute is transitioning" state.
+ * Includes retry logic and wake-up ping to handle Neon "Compute is transitioning" state.
  */
-export const initializeDatabase = async (retries = 5, delay = 5000) => {
+export const initializeDatabase = async (retries = 6, delay = 10000) => {
     try {
-        // More reliable way to find the file in Vercel environments
         const __dirname = path.dirname(fileURLToPath(import.meta.url));
         const sqlPath = path.resolve(__dirname, '../../database.sql');
         
@@ -48,30 +47,38 @@ export const initializeDatabase = async (retries = 5, delay = 5000) => {
 
         const sql = fs.readFileSync(sqlPath, 'utf8')
 
+        // Step 1: Wake-up Ping
         for (let i = 0; i < retries; i++) {
             try {
-                console.log(`Attempting to initialize database (Attempt ${i + 1}/${retries})...`);
-                await pool.query(sql);
-                console.log('✓ Database schema initialized successfully');
-                initStatus = 'success';
-                return;
+                console.log(`Wake-up Ping (Attempt ${i + 1}/${retries})...`);
+                await pool.query('SELECT 1');
+                console.log('✓ Database is awake');
+                break;
             } catch (err) {
-                const isTransitioning = err.message.includes('transitioning') || err.message.includes('not ready');
-                
-                if (isTransitioning && i < retries - 1) {
-                    console.log(`⏳ Neon compute is waking up... retrying in ${delay / 1000}s`);
+                const isRecoverable = err.message.includes('transitioning') || 
+                                     err.message.includes('not ready') || 
+                                     err.message.includes('timeout') ||
+                                     err.message.includes('terminated');
+
+                if (isRecoverable && i < retries - 1) {
+                    console.log(`⏳ Waiting for Neon to wake up (${err.message})... retrying in ${delay / 1000}s`);
                     await new Promise(res => setTimeout(res, delay));
                 } else {
-                    initStatus = 'failed';
-                    initError = err.message;
-                    console.error('❌ Database initialization failed:', err.message);
-                    throw err;
+                    throw err; // Give up and move to catch block
                 }
             }
         }
+
+        // Step 2: Run Initialization
+        console.log('Running initialization script...');
+        await pool.query(sql);
+        console.log('✓ Database schema initialized successfully');
+        initStatus = 'success';
+        
     } catch (e) {
         initStatus = 'error';
         initError = e.message;
+        console.error('❌ Database initialization failed:', e.message);
     }
 }
 
