@@ -88,7 +88,7 @@ INSERT INTO jobs (title, department, location, type, description, requirements) 
 ('Cloud Solutions Architect', 'Engineering', 'San Francisco, CA', 'Full-time', 'Join our team to design and implement cloud-native solutions for enterprise clients. You will lead architectural decisions and mentor junior engineers.', 'AWS/Azure/GCP certifications. 7+ years experience. Strong communication skills.'),
 ('Business Intelligence Analyst', 'Analytics', 'Remote', 'Full-time', 'Drive data-driven decision making by creating insightful dashboards and reports. Work closely with stakeholders to understand business needs.', 'Proficiency in Tableau/Power BI. SQL expertise. 3+ years BI experience.'),
 ('Machine Learning Engineer', 'Data Science', 'Boston, MA', 'Full-time', 'Develop and deploy ML models to production. Work on cutting-edge AI projects including NLP and computer vision.', 'MS/PhD in ML or related field. Experience with PyTorch/TensorFlow. MLOps experience preferred.')
-) ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 -- ============================================
 -- Verify tables created successfully
